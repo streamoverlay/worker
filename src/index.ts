@@ -94,7 +94,7 @@ app.post('/:resourceId/complete', withBody(CompleteResourceDTO), async (c) => {
 
   await res.complete(parts);
   await KV.delete(resourceId);
-  return c.json({ resourceId }, 201);
+  return c.json({ id: res.key }, 201);
 });
 
 // Delete resource.
@@ -103,7 +103,7 @@ app.delete('/:resourceId', withAuth, async (c) => {
   const resourceId = c.req.param('resourceId');
 
   await BUCKET.delete(resourceId);
-  return c.json({ resourceId }, 204);
+  return c.json({ id: resourceId }, 204);
 });
 
 // Abort resource upload.
@@ -119,7 +119,7 @@ app.delete('/:resourceId', withBody(DeleteResourceDTO), async (c) => {
 
   await res.abort();
   await KV.delete(resourceId);
-  return c.json({ resourceId }, 204);
+  return c.json({ id: res.key }, 204);
 });
 
 // Handle 404 error.
