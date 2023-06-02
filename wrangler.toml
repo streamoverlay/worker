@@ -1,0 +1,13 @@
+name = "streamoverlay-worker"
+main = "src/index.ts"
+compatibility_date = "2023-01-01"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "139f4dfc30184d1eb2b7490da688a6c8"
+preview_id = "139f4dfc30184d1eb2b7490da688a6c8"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "streamoverlay-bucket"
+preview_bucket_name = "streamoverlay-bucket"
