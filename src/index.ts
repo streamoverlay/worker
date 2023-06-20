@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { v4 as uuid } from 'uuid';
 
 import Environment from './environment';
@@ -18,6 +19,14 @@ import { getUntilHoursEpoch } from './utils';
 const app = new Hono();
 
 /* Middlewares */
+app.use(
+  '*',
+  cors({
+    origin: ['http://localhost:3000', 'https://streamoverlay.xyz', 'https://www.streamoverlay.xyz', 'https://beta.streamoverlay.xyz/'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 /* Routes */
 
@@ -82,7 +91,7 @@ app.put('/:resourceId', withBody(UploadResourceDTO), async (c) => {
 });
 
 // Complete resource.
-app.post('/:resourceId/complete', withBody(CompleteResourceDTO), async (c) => {
+app.post('/:resourceId/complete', withAuth, withBody(CompleteResourceDTO), async (c) => {
   const { parts, uploadId } = c.req.valid('json') as CompleteResource;
   const { BUCKET, KV } = c.env as Environment;
   const resourceId = c.req.param('resourceId');
@@ -107,7 +116,7 @@ app.delete('/:resourceId', withAuth, async (c) => {
 });
 
 // Abort resource upload.
-app.delete('/:resourceId', withBody(DeleteResourceDTO), async (c) => {
+app.delete('/:resourceId/abort', withBody(DeleteResourceDTO), async (c) => {
   const { uploadId } = c.req.valid('json') as DeleteResource;
   const { BUCKET, KV } = c.env as Environment;
   const resourceId = c.req.param('resourceId');
