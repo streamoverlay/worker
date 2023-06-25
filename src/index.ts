@@ -41,9 +41,12 @@ app.get('/:resourceId', async (c) => {
   }
 
   const data = await res.arrayBuffer();
+  const contentType = res.httpMetadata?.contentType || 'image/jpg';
+  const ext = contentType.split('/')[1] || 'jpg';
   return c.body(data, 200, {
     etag: res.etag,
-    'Content-Type': res.httpMetadata?.contentType || 'image/jpg',
+    'Content-Type': contentType,
+    'Content-Disposition': `attachment; filename="${resourceId}.${ext}"`,
   });
 });
 
@@ -112,7 +115,7 @@ app.delete('/:resourceId', withAuth, async (c) => {
   const resourceId = c.req.param('resourceId');
 
   await BUCKET.delete(resourceId);
-  return c.json({ id: resourceId }, 204);
+  return c.json({ id: resourceId }, 200);
 });
 
 // Abort resource upload.
@@ -128,7 +131,7 @@ app.delete('/:resourceId/abort', withBody(DeleteResourceDTO), async (c) => {
 
   await res.abort();
   await KV.delete(resourceId);
-  return c.json({ id: res.key }, 204);
+  return c.json({ id: res.key }, 200);
 });
 
 // Handle 404 error.
