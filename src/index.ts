@@ -22,7 +22,15 @@ const app = new Hono();
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://streamoverlay.xyz', 'https://www.streamoverlay.xyz', 'https://beta.streamoverlay.xyz/'],
+    origin: [
+      'http://localhost:3000',
+      'https://staroverlay.com',
+      'https://www.staroverlay.com',
+      'https://app.staroverlay.com',
+      'https://app.dev.staroverlay.com',
+      'https://widgets.staroverlay.com',
+      'https://widgets.dev.staroverlay.com',
+    ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowHeaders: ['Content-Type', 'Authorization'],
   })
