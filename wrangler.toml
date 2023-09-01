@@ -1,6 +1,9 @@
-name = "streamoverlay-worker"
+name = "staroverlay-worker-dev"
 main = "src/index.ts"
 compatibility_date = "2023-01-01"
+
+route = "worker.dev.staroverlay.com"
+vars = { ENVIRONMENT = "dev" }
 
 [[kv_namespaces]]
 binding = "KV"
@@ -9,5 +12,5 @@ preview_id = "139f4dfc30184d1eb2b7490da688a6c8"
 
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "streamoverlay-bucket"
-preview_bucket_name = "streamoverlay-bucket"
+bucket_name = "staroverlay-bucket-dev"
+preview_bucket_name = "staroverlay-bucket-dev"
