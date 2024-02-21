@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { v4 as uuid } from 'uuid';
 
@@ -17,6 +17,9 @@ import withBody from './middlewares/withBody';
 import { getUntilHoursEpoch } from './utils';
 
 const app = new Hono();
+
+/* Settings */
+const MAX_THUMBNAIL_SIZE = 1024 * 256; // 256KB
 
 /* Middlewares */
 app.use(
@@ -65,20 +68,33 @@ app.post('/', withAuth, withBody(CreateResourceDTO), async (c) => {
   const { BUCKET, KV } = c.env as Environment;
 
   const id = uuid().replace(/-/g, '');
+
+  // Create resource.
   const res = await BUCKET.createMultipartUpload(id, {
     httpMetadata: {
       contentType,
     },
   });
+
   await KV.put(id, `${size}`, { expiration: getUntilHoursEpoch(1) });
-  return c.json({ id, uploadId: res.uploadId }, 201);
+
+  // Create thumbnail.
+  const thumbId = `${id}-thumbnail`;
+  const thumbRes = await BUCKET.createMultipartUpload(thumbId, {
+    httpMetadata: {
+      contentType: 'image/jpeg',
+    },
+  });
+  await KV.put(thumbId, `${MAX_THUMBNAIL_SIZE}`, { expiration: getUntilHoursEpoch(1) });
+
+  // Return uploadId.
+  return c.json({ id, uploadId: res.uploadId, thumbnailUploadId: thumbRes.uploadId }, 201);
 });
 
 // Upload resource.
-app.put('/:resourceId', withBody(UploadResourceDTO), async (c) => {
-  const { buffer, part, uploadId } = c.req.valid('json') as UploadResource;
+const handleUpload = async (c: Context, data: UploadResource, resourceId: string) => {
+  const { buffer, part, uploadId } = data;
   const { BUCKET, KV } = c.env as Environment;
-  const resourceId = c.req.param('resourceId');
 
   const rawPending = await KV.get(resourceId);
   const pending = rawPending ? parseInt(rawPending) : 0;
@@ -100,13 +116,24 @@ app.put('/:resourceId', withBody(UploadResourceDTO), async (c) => {
   const res = BUCKET.resumeMultipartUpload(resourceId, uploadId);
   const uploadedPart = await res.uploadPart(part, byteArray);
   return c.json(uploadedPart, 201);
+};
+
+app.put('/:resourceId', withBody(UploadResourceDTO), (c) => {
+  const { buffer, part, uploadId } = c.req.valid('json') as UploadResource;
+  const resourceId = c.req.param('resourceId');
+  return handleUpload(c, { buffer, part, uploadId }, resourceId);
+});
+
+app.put('/:resourceId/thumbnail', withBody(UploadResourceDTO), (c) => {
+  const { buffer, part, uploadId } = c.req.valid('json') as UploadResource;
+  const resourceId = c.req.param('resourceId') + '-thumbnail';
+  return handleUpload(c, { buffer, part, uploadId }, resourceId);
 });
 
 // Complete resource.
-app.post('/:resourceId/complete', withAuth, withBody(CompleteResourceDTO), async (c) => {
-  const { parts, uploadId } = c.req.valid('json') as CompleteResource;
+const handleComplete = async (c: Context, data: CompleteResource, resourceId: string) => {
+  const { parts, uploadId } = data;
   const { BUCKET, KV } = c.env as Environment;
-  const resourceId = c.req.param('resourceId');
 
   const res = BUCKET.resumeMultipartUpload(resourceId, uploadId);
   if (!res) {
@@ -116,6 +143,18 @@ app.post('/:resourceId/complete', withAuth, withBody(CompleteResourceDTO), async
   await res.complete(parts);
   await KV.delete(resourceId);
   return c.json({ id: res.key }, 201);
+};
+
+app.post('/:resourceId/complete', withAuth, withBody(CompleteResourceDTO), async (c) => {
+  const { parts, uploadId } = c.req.valid('json') as CompleteResource;
+  const resourceId = c.req.param('resourceId');
+  return handleComplete(c, { parts, uploadId }, resourceId);
+});
+
+app.post('/:resourceId/thumbnail/complete', withAuth, withBody(CompleteResourceDTO), async (c) => {
+  const { parts, uploadId } = c.req.valid('json') as CompleteResource;
+  const resourceId = c.req.param('resourceId') + '-thumbnail';
+  return handleComplete(c, { parts, uploadId }, resourceId);
 });
 
 // Delete resource.
