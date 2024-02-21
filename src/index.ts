@@ -43,9 +43,8 @@ app.use(
 /* Routes */
 
 // Get saved resource.
-app.get('/:resourceId', async (c) => {
+const handleGet = async (c: Context, resourceId: string) => {
   const { BUCKET } = c.env as Environment;
-  const resourceId = c.req.param('resourceId');
 
   const res = await BUCKET.get(resourceId);
   if (!res) {
@@ -60,6 +59,16 @@ app.get('/:resourceId', async (c) => {
     'Content-Type': contentType,
     'Content-Disposition': `attachment; filename="${resourceId}.${ext}"`,
   });
+};
+
+app.get('/:resourceId', async (c) => {
+  const resourceId = c.req.param('resourceId');
+  return handleGet(c, resourceId);
+});
+
+app.get('/:resourceId/thumbnail', async (c) => {
+  const resourceId = c.req.param('resourceId') + '-thumbnail';
+  return handleGet(c, resourceId);
 });
 
 // Create new resource.
@@ -158,19 +167,28 @@ app.post('/:resourceId/thumbnail/complete', withAuth, withBody(CompleteResourceD
 });
 
 // Delete resource.
-app.delete('/:resourceId', withAuth, async (c) => {
-  const { BUCKET } = c.env as Environment;
-  const resourceId = c.req.param('resourceId');
+const handleDelete = async (c: Context, resourceId: string) => {
+  const { BUCKET, KV } = c.env as Environment;
 
   await BUCKET.delete(resourceId);
+  await KV.delete(resourceId);
   return c.json({ id: resourceId }, 200);
+};
+
+app.delete('/:resourceId', withAuth, async (c) => {
+  const resourceId = c.req.param('resourceId');
+  return handleDelete(c, resourceId);
+});
+
+app.delete('/:resourceId/thumbnail', withAuth, async (c) => {
+  const resourceId = c.req.param('resourceId') + '-thumbnail';
+  return handleDelete(c, resourceId);
 });
 
 // Abort resource upload.
-app.delete('/:resourceId/abort', withBody(DeleteResourceDTO), async (c) => {
-  const { uploadId } = c.req.valid('json') as DeleteResource;
+const handleAbort = async (c: Context, data: DeleteResource, resourceId: string) => {
+  const { uploadId } = data;
   const { BUCKET, KV } = c.env as Environment;
-  const resourceId = c.req.param('resourceId');
 
   const res = BUCKET.resumeMultipartUpload(resourceId, uploadId);
   if (!res) {
@@ -180,6 +198,18 @@ app.delete('/:resourceId/abort', withBody(DeleteResourceDTO), async (c) => {
   await res.abort();
   await KV.delete(resourceId);
   return c.json({ id: res.key }, 200);
+};
+
+app.delete('/:resourceId/abort', withBody(DeleteResourceDTO), async (c) => {
+  const resourceId = c.req.param('resourceId');
+  const data = c.req.valid('json') as DeleteResource;
+  return handleAbort(c, data, resourceId);
+});
+
+app.delete('/:resourceId/thumbnail/abort', withBody(DeleteResourceDTO), async (c) => {
+  const resourceId = c.req.param('resourceId') + '-thumbnail';
+  const data = c.req.valid('json') as DeleteResource;
+  return handleAbort(c, data, resourceId);
 });
 
 // Handle 404 error.
