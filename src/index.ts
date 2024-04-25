@@ -1,6 +1,5 @@
 import { Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { v4 as uuid } from 'uuid';
 
 import Environment from './environment';
 
@@ -73,10 +72,8 @@ app.get('/:resourceId/thumbnail', async (c) => {
 
 // Create new resource.
 app.post('/', withAuth, withBody(CreateResourceDTO), async (c) => {
-  const { contentType, size } = c.req.valid('json') as CreateResource;
+  const { contentType, size, id } = c.req.valid('json') as CreateResource;
   const { BUCKET, KV } = c.env as Environment;
-
-  const id = uuid().replace(/-/g, '');
 
   // Create resource.
   const res = await BUCKET.createMultipartUpload(id, {
